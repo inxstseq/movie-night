@@ -607,7 +607,7 @@ body::after {
 
 <div class="toast" id="toast"></div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" onload="initApp()" onerror="onSupabaseError()"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 // ── SUPABASE ──
 const SUPA_URL = 'https://laaqsvuyewywehyptiyk.supabase.co';
@@ -887,6 +887,8 @@ function setAiHint(msg, type){
   el.textContent = msg;
   el.className = 'ai-hint' + (type ? ' '+type : '');
 }
+
+async function saveMovie(){
   const title=document.getElementById('f-title').value.trim();
   if(!title){ document.getElementById('f-title').focus(); return; }
   const payload = {
@@ -1105,6 +1107,9 @@ function renderWatched(){
       </div>
     </div>`;}).join('');
 }
+
+// ── ARRANCAR ──
+initApp();
 </script>
 </body>
 </html>
