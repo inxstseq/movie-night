@@ -353,6 +353,14 @@ body::after {
   transition:color 0.15s;
 }
 .settings-tag .del-tag:hover { color:var(--red); }
+.danger-zone { border-color: rgba(201,64,64,0.3) !important; }
+.btn-danger-full {
+  width:100%; padding:14px; background:transparent;
+  border:1px solid rgba(201,64,64,0.5); border-radius:8px;
+  color:var(--red); font-family:'DM Sans',sans-serif; font-size:0.9rem;
+  font-weight:500; cursor:pointer; transition:all 0.2s;
+}
+.btn-danger-full:hover { background:rgba(201,64,64,0.12); border-color:var(--red); }
 
 /* DUELO TAB */
 .duelo-phase { display:flex; flex-direction:column; align-items:center; width:100%; min-height:70vh; }
@@ -720,6 +728,26 @@ body::after {
         </div>
         <div class="settings-tags" id="settings-moods"></div>
       </div>
+      <div class="settings-section danger-zone">
+        <div class="settings-header">
+          <span>⚠️ Zona de Peligro</span>
+        </div>
+        <p style="color:var(--muted);font-size:0.85rem;margin-bottom:16px;line-height:1.5">Acciones irreversibles. Úsalas solo en caso de emergencia.</p>
+        <button class="btn-danger-full" onclick="confirmClearList()">🗑 Borrar toda la lista de películas</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- CLEAR LIST MODAL -->
+<div class="modal-overlay" id="clear-modal-overlay" onclick="if(event.target===this)closeClearModal()">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="clear-modal-title" style="color:var(--red)">⚠️ Borrar toda la lista</div>
+    <p id="clear-modal-body" style="color:var(--muted);font-size:0.9rem;line-height:1.6;margin-bottom:8px"></p>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeClearModal()">Cancelar</button>
+      <button id="clear-modal-confirm-btn" style="padding:12px 24px;background:var(--red);color:#fff;border:none;border-radius:8px;font-family:'DM Sans',sans-serif;font-weight:500;cursor:pointer;" onclick="clearListStep2()">Sí, borrar</button>
     </div>
   </div>
 </div>
@@ -1290,16 +1318,19 @@ function importCSV(event){
     const firstLow=lines[0].toLowerCase();
     const hasHeader=firstLow.includes('titulo')||firstLow.includes('título')||firstLow.includes('title')||firstLow.includes('genero');
     const dataLines=hasHeader?lines.slice(1):lines;
-    let added=0, skipped=0;
+    let added=0, skipped=0, dupes=0;
     const toInsert=[];
+    const existingTitles = new Set(S.movies.map(m=>m.title.toLowerCase().trim()));
     dataLines.forEach(line=>{
       const cols=parseCSVLine(line);
       const title=(cols[0]||'').trim(); if(!title){ skipped++; return; }
+      if(existingTitles.has(title.toLowerCase())){ dupes++; return; }
       const genreRaw=(cols[1]||'').trim(), moodRaw=(cols[2]||'').trim();
       const s1Raw=(cols[3]||'').trim().toLowerCase(), s2Raw=(cols[4]||'').trim().toLowerCase();
       const durRaw=(cols[5]||'').trim().toLowerCase();
       function matchList(raw,list){ if(!raw)return[]; return raw.split(/[|;]/).map(s=>s.trim()).filter(Boolean).map(p=>list.find(x=>x.toLowerCase()===p.toLowerCase())||list.find(x=>x.toLowerCase().includes(p.toLowerCase()))||null).filter(Boolean); }
       toInsert.push({ title, genres:matchList(genreRaw,GENRES).join(','), moods:matchList(moodRaw,MOODS).join(','), dur:DURS.find(d=>d.id===durRaw||d.label.toLowerCase()===durRaw)?.id||null, seen_p1:['si','sí','yes','1','true'].includes(s1Raw), seen_p2:['si','sí','yes','1','true'].includes(s2Raw) });
+      existingTitles.add(title.toLowerCase());
       added++;
     });
     if(toInsert.length){
@@ -1309,7 +1340,9 @@ function importCSV(event){
     }
     event.target.value='';
     renderList(); updateSpinCount();
-    toast(`✅ ${added} películas importadas${skipped?` · ${skipped} omitidas`:''}`);
+    const dupMsg = dupes ? ` · ${dupes} duplicada${dupes>1?'s':''}` : '';
+    const skipMsg = skipped ? ` · ${skipped} omitida${skipped>1?'s':''}` : '';
+    toast(`✅ ${added} película${added!==1?'s':''} importada${added!==1?'s':''}${dupMsg}${skipMsg}`);
   };
   reader.readAsText(file,'UTF-8');
 }
@@ -1405,6 +1438,39 @@ function deleteTag(type, name){
   saveGenresMoods();
   buildDropdowns(); buildSpinChips(); buildModalChips(); renderSettings();
   toast(`🗑 Eliminado: ${name}`);
+}
+
+function confirmClearList(){
+  if(!S.movies.length){ toast('⚠️ La lista ya está vacía'); return; }
+  document.getElementById('clear-modal-title').textContent = '⚠️ Borrar toda la lista';
+  document.getElementById('clear-modal-body').textContent = `Esto eliminará permanentemente las ${S.movies.length} película${S.movies.length!==1?'s':''} de tu lista. ¿Estás segura/o?`;
+  document.getElementById('clear-modal-confirm-btn').onclick = clearListStep2;
+  document.getElementById('clear-modal-overlay').classList.add('open');
+}
+function clearListStep2(){
+  document.getElementById('clear-modal-title').textContent = '🚨 Última confirmación';
+  document.getElementById('clear-modal-body').textContent = 'Esta acción NO se puede deshacer. ¿Confirmas que quieres borrar toda la lista para siempre?';
+  document.getElementById('clear-modal-confirm-btn').textContent = 'Sí, borrar TODO';
+  document.getElementById('clear-modal-confirm-btn').onclick = executeClearList;
+}
+async function executeClearList(){
+  closeClearModal();
+  const ids = S.movies.map(m=>m.id);
+  const {error} = await sb.from('movies').delete().in('id', ids);
+  if(error){ toast('❌ Error al borrar la lista'); return; }
+  S.movies = [];
+  renderList(); updateSpinCount();
+  toast('🗑 Lista borrada completamente');
+}
+function closeClearModal(){
+  const overlay = document.getElementById('clear-modal-overlay');
+  overlay.classList.remove('open');
+  // Reset for next time
+  setTimeout(()=>{
+    document.getElementById('clear-modal-title').textContent = '⚠️ Borrar toda la lista';
+    document.getElementById('clear-modal-confirm-btn').textContent = 'Sí, borrar';
+    document.getElementById('clear-modal-confirm-btn').onclick = clearListStep2;
+  }, 300);
 }
 
 // ── WATCHED ──
