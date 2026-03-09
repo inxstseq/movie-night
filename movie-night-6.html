@@ -1456,8 +1456,12 @@ function clearListStep2(){
 async function executeClearList(){
   closeClearModal();
   const ids = S.movies.map(m=>m.id);
-  const {error} = await sb.from('movies').delete().in('id', ids);
-  if(error){ toast('❌ Error al borrar la lista'); return; }
+  if(!ids.length){ toast('⚠️ La lista ya está vacía'); return; }
+  try {
+    await Promise.all(ids.map(id => sb.from('movies').delete().eq('id', id)));
+  } catch(e){
+    toast('❌ Error al borrar la lista'); return;
+  }
   S.movies = [];
   renderList(); updateSpinCount();
   toast('🗑 Lista borrada completamente');
