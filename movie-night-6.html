@@ -428,10 +428,6 @@ body::after {
         <input type="text" id="name2" placeholder="Nahuel" maxlength="14">
       </div>
     </div>
-    <div class="name-card" style="margin-bottom:20px;text-align:left">
-      <label style="color:var(--muted)">✦ Gemini API Key <span style="font-size:0.7rem;text-transform:none;letter-spacing:0;font-weight:300">(se guarda solo en tu navegador)</span></label>
-      <input type="password" id="gemini-key-input" placeholder="AIza..." style="text-align:left;font-size:0.9rem">
-    </div>
     <button class="btn-start" onclick="startApp()">EMPEZAR 🎬</button>
   </div>
 </div>
@@ -546,13 +542,7 @@ body::after {
     <div class="modal-title" id="modal-title">Nueva Película</div>
     <div class="form-group">
       <label>Título</label>
-      <div class="title-row">
-        <input class="form-input" id="f-title" type="text" placeholder="Nombre de la película" oninput="onTitleInput()">
-        <button class="btn-ai" id="btn-ai" onclick="autofillAI()" title="Clasificar con IA">
-          <span id="ai-icon">✦</span>
-        </button>
-      </div>
-      <div class="ai-hint" id="ai-hint">Escribe el título y pulsa ✦ para que la IA lo clasifique</div>
+      <input class="form-input" id="f-title" type="text" placeholder="Nombre de la película" oninput="onTitleInput()">
     </div>
     <div class="form-group">
       <label>Género <span style="color:var(--muted);font-weight:300;text-transform:none;letter-spacing:0">(puedes elegir varios)</span></label>
@@ -672,10 +662,8 @@ async function initApp(){
     hideLoading();
     const savedP1 = localStorage.getItem('mn_p1');
     const savedP2 = localStorage.getItem('mn_p2');
-    const savedKey = localStorage.getItem('mn_gemini_key');
     if(savedP1) document.getElementById('name1').value = savedP1;
     if(savedP2) document.getElementById('name2').value = savedP2;
-    if(savedKey) document.getElementById('gemini-key-input').value = '••••••••••••••••';
   } catch(err) {
     if(err.message === 'timeout'){
       setLoadingMsg('⏱ La conexión tarda demasiado. Comprueba tu internet e intenta de nuevo.');
@@ -702,9 +690,6 @@ function startApp() {
   S.p2 = document.getElementById('name2').value.trim() || 'Nahuel';
   localStorage.setItem('mn_p1', S.p1);
   localStorage.setItem('mn_p2', S.p2);
-  // save Gemini key if provided
-  const keyInput = document.getElementById('gemini-key-input').value.trim();
-  if(keyInput){ GEMINI_KEY = keyInput; localStorage.setItem('mn_gemini_key', keyInput); }
   document.getElementById('badge1').textContent = S.p1;
   document.getElementById('badge2').textContent = S.p2;
   document.getElementById('sn1').textContent = S.p1;
