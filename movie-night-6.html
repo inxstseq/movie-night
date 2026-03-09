@@ -882,6 +882,15 @@ async function initApp(){
     if(e1||e2) throw e1||e2;
     S.watched = (watched||[]).map(rowToWatched);
     S.movies  = (movies||[]).map(rowToMovie);
+    // Reinsertar en movies (con s1=s2=true) las que están en watched pero no en movies
+    const movieTitles = new Set(S.movies.map(m=>m.title.toLowerCase()));
+    const missing = S.watched.filter(w=>!movieTitles.has(w.title.toLowerCase()));
+    if(missing.length){
+      const toInsert = missing.map(w=>({title:w.title, genres:arrToStr(w.genres), moods:arrToStr(w.moods), dur:w.dur||null, seen_p1:true, seen_p2:true}));
+      sb.from('movies').insert(toInsert).select().then(({data, error})=>{
+        if(!error && data){ S.movies.push(...data.map(rowToMovie)); renderList(); }
+      });
+    }
     hideLoading();
     const savedP1 = localStorage.getItem('mn_p1');
     const savedP2 = localStorage.getItem('mn_p2');
@@ -1396,11 +1405,26 @@ function renderWatched(){
 }
 
 async function removeWatched(id){
-  const { error } = await sb.from('watched').delete().eq('id', id);
-  if(error){ toast('❌ Error al eliminar'); return; }
-  S.watched = S.watched.filter(x=>x.id!==id);
+  const numId = Number(id);
+  const w = S.watched.find(x=>Number(x.id)===numId);
+  if(!w) return;
+
+  // 1. Borrar de watched
+  const { error } = await sb.from('watched').delete().eq('id', numId);
+  if(error){ toast('❌ Error al eliminar'); console.error(error); return; }
+
+  // 2. Revertir s1/s2 en movies (buscar por título)
+  const movie = S.movies.find(m=>m.title.toLowerCase()===w.title.toLowerCase());
+  if(movie){
+    const { error: e2 } = await sb.from('movies').update({seen_p1:false, seen_p2:false}).eq('id', movie.id);
+    if(!e2){ movie.s1=false; movie.s2=false; }
+  }
+
+  // 3. Actualizar estado local
+  S.watched = S.watched.filter(x=>Number(x.id)!==numId);
   renderWatched();
-  toast('🗑️ Película eliminada de vistas');
+  renderList();
+  toast('↩️ Marcada como no vista');
 }
 
 // ── DUELO ──
@@ -1555,7 +1579,7 @@ function showDueloResult(winner){
   if(isP1){
     launchBubbles(['👑','💅','😎','🎉','💃','🔥','✨','💋','🌹','💪','🥳','💯'], 40, null);
   } else {
-    const gritos = ['¡CULIAO!','¡PELOTUDO!','¡BOLUDO!','¡CARAJO!','¡VAMO VIEJO NO MA!','¡VAMOS BOCA!','¡LA CONCHA DE LA LORA!'];
+    const gritos = ['¡CULIAO!','¡PELOTUDO!','¡BOLUDO!','¡CARAJO!','¡VAMO VIEJO!','¡VAMOOOOO!','¡VAMOS BOCA!','¡NO MA!','¡LA CONCHA!'];
     launchBubbles(['🇦🇷','🥊','💪','🎊','🙌','🔥','🎉','💥','😤','🏆'], 40, gritos);
   }
   dueloSpinning = false;
