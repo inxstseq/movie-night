@@ -1400,17 +1400,21 @@ function renderWatched(){
         <div class="watched-title">${m.title}</div>
         <div class="watched-meta">Vista el ${m.date}${gs.length?' · '+gs.join(', '):''}${ms.length?' · '+ms.join(', '):''}</div>
       </div>
-      <button class="btn-remove-watched" onclick="removeWatched(${m.id})" title="Quitar de vistas">✕</button>
+      <button class="btn-remove-watched" data-id="${m.id}" onclick="removeWatched(this.dataset.id)" title="Quitar de vistas">✕</button>
     </div>`;}).join('');
 }
 
 async function removeWatched(id){
-  const numId = Number(id);
-  const w = S.watched.find(x=>Number(x.id)===numId);
-  if(!w) return;
+  console.log('removeWatched called with id:', id, typeof id);
+  console.log('S.watched:', S.watched.map(x=>({id:x.id, type:typeof x.id, title:x.title})));
+  
+  // Buscar por id flexible (string o número)
+  const w = S.watched.find(x=> String(x.id) === String(id));
+  console.log('found w:', w);
+  if(!w){ toast('❌ No encontrada'); return; }
 
   // 1. Borrar de watched
-  const { error } = await sb.from('watched').delete().eq('id', numId);
+  const { error } = await sb.from('watched').delete().eq('id', w.id);
   if(error){ toast('❌ Error al eliminar'); console.error(error); return; }
 
   // 2. Revertir s1/s2 en movies (buscar por título)
@@ -1421,7 +1425,7 @@ async function removeWatched(id){
   }
 
   // 3. Actualizar estado local
-  S.watched = S.watched.filter(x=>Number(x.id)!==numId);
+  S.watched = S.watched.filter(x=> String(x.id) !== String(id));
   renderWatched();
   renderList();
   toast('↩️ Marcada como no vista');
