@@ -835,18 +835,13 @@ async function autofillAI(){
   btn.classList.add('loading'); btn.disabled = true;
   setAiHint('Clasificando…', '');
 
-  const prompt = `Eres un experto en cine. Para la película "${title}" devuelve SOLO un JSON válido con esta estructura exacta, sin texto adicional, sin markdown:
-{
-  "genres": [],
-  "moods": [],
-  "dur": ""
-}
-Reglas:
-- genres: elige 1-3 de esta lista exacta: ${GENRES.join(', ')}
-- moods: elige 1-3 de esta lista exacta: ${MOODS.join(', ')}
-- dur: elige exactamente uno de: corta, normal, larga, epica (corta=hasta 1h30, normal=1h30-2h, larga=2h-3h, epica=+3h)
-- Si no conoces la película, devuelve arrays vacíos y dur vacío
-- Devuelve SOLO el JSON, nada más`;
+  const prompt = `Eres un experto en cine mundial incluyendo cine español y latinoamericano. Para la película "${title}" devuelve SOLO un objeto JSON, sin markdown, sin texto extra:
+{"genres":[],"moods":[],"dur":""}
+- genres: entre 1 y 3 valores de esta lista: ${GENRES.join(', ')}
+- moods: entre 1 y 3 valores de esta lista: ${MOODS.join(', ')}
+- dur: uno de estos valores exactos: corta, normal, larga, epica
+- corta = menos de 1h30 | normal = 1h30 a 2h | larga = 2h a 3h | epica = más de 3h
+- SIEMPRE rellena los campos aunque sea una estimación. Devuelve SOLO el JSON.`;
 
   try {
     const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`, {
@@ -855,28 +850,31 @@ Reglas:
       body: JSON.stringify({ contents:[{ parts:[{ text: prompt }] }] })
     });
     const data = await res.json();
+
+    // Check for API-level errors
+    if(data.error){ setAiHint('❌ Error API: ' + data.error.message, 'error'); return; }
+
     const raw = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
     const clean = raw.replace(/```json|```/g,'').trim();
     const parsed = JSON.parse(clean);
 
-    // apply genres
-    if(parsed.genres?.length){
-      S.form.genres = parsed.genres.filter(g=>GENRES.includes(g));
-    }
-    // apply moods
-    if(parsed.moods?.length){
-      S.form.moods = parsed.moods.filter(m=>MOODS.includes(m));
-    }
-    // apply dur
-    if(parsed.dur && DURS.find(d=>d.id===parsed.dur)){
-      S.form.dur = parsed.dur;
-    }
+    if(parsed.genres?.length) S.form.genres = parsed.genres.filter(g=>GENRES.includes(g));
+    if(parsed.moods?.length)  S.form.moods  = parsed.moods.filter(m=>MOODS.includes(m));
+    if(parsed.dur && DURS.find(d=>d.id===parsed.dur)) S.form.dur = parsed.dur;
 
     buildModalChips(); syncDurBtns();
-    const durInfo = S.form.dur ? ` · ${DURS.find(d=>d.id===S.form.dur)?.label}` : '';
-    setAiHint(`✓ ${S.form.genres.join(', ')||'sin género'}${durInfo}`, 'success');
+
+    const parts = [
+      S.form.genres.join(', ')||null,
+      S.form.dur ? DURS.find(d=>d.id===S.form.dur)?.label : null
+    ].filter(Boolean);
+
+    if(parts.length) setAiHint('✓ ' + parts.join(' · '), 'success');
+    else setAiHint('⚠️ No reconoció la película, rellena manualmente', 'error');
+
   } catch(e) {
-    setAiHint('No se pudo clasificar, rellena manualmente', 'error');
+    setAiHint('❌ ' + (e.message||'Error desconocido'), 'error');
+    console.error(e);
   } finally {
     btn.classList.remove('loading'); btn.disabled = false;
   }
