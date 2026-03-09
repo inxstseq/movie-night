@@ -775,7 +775,7 @@ function startApp() {
   renderList();
   document.getElementById('setup').classList.remove('active');
   document.getElementById('app').classList.add('active');
-  setTimeout(()=>toast('💋 ¡Muy bien, amor! Bienvenidos 🎬'), 400);
+  setTimeout(()=>toast('💋 ¡Muy bien, amor! Bienvenid@ 🎬'), 400);
 }
 
 // ── TABS ──
@@ -951,6 +951,11 @@ function setAiHint(msg, type){
 async function saveMovie(){
   const title=document.getElementById('f-title').value.trim();
   if(!title){ document.getElementById('f-title').focus(); return; }
+
+  // No duplicados (ignorar la peli que se está editando)
+  const duplicate = S.movies.find(m => m.title.toLowerCase()===title.toLowerCase() && m.id!==S.editId);
+  if(duplicate){ toast('⚠️ Ya tienes esa película en la lista'); return; }
+
   const payload = {
     title,
     genres: arrToStr(S.form.genres),
@@ -964,13 +969,15 @@ async function saveMovie(){
     if(error){ toast('❌ Error al guardar'); return; }
     const idx = S.movies.findIndex(x=>x.id===S.editId);
     if(idx>-1) S.movies[idx] = rowToMovie(data);
+    closeModal(); renderList(); updateSpinCount();
+    toast('✏️ Película actualizada');
   } else {
     const { data, error } = await sb.from('movies').insert(payload).select().single();
     if(error){ toast('❌ Error al guardar'); return; }
     S.movies.push(rowToMovie(data));
+    closeModal(); renderList(); updateSpinCount();
+    toast(`🎬 "${title}" añadida a la lista`);
   }
-  closeModal(); renderList(); updateSpinCount();
-  toast('✅ Guardada');
 }
 
 // ── SPIN CHIPS ──
