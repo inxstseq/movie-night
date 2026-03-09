@@ -80,7 +80,7 @@ body::after {
 .btn-start:hover { background:#F0D080; transform:translateY(-2px); box-shadow:0 8px 30px rgba(232,196,106,0.3); }
 
 /* APP SHELL */
-#app { flex-direction:column; }
+#app { flex-direction:column; height:100vh; overflow:hidden; }
 .topbar {
   display:flex; align-items:center; justify-content:space-between;
   padding:18px 24px; border-bottom:1px solid var(--border);
@@ -101,7 +101,7 @@ body::after {
 .tab.active { color:var(--gold); border-bottom-color:var(--gold); }
 .tab:hover:not(.active) { color:var(--text); }
 
-.tab-content { display:none; flex:1; flex-direction:column; }
+.tab-content { display:none; flex:1; flex-direction:column; overflow-y:auto; }
 .tab-content.active { display:flex; }
 
 /* LIST TAB */
@@ -329,6 +329,8 @@ body::after {
 /* WATCHED TAB */
 .watched-list { flex:1; overflow-y:auto; padding:12px 20px 80px; }
 .watched-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:14px 16px; margin-bottom:8px; display:flex; align-items:center; gap:12px; opacity:0.75; }
+.btn-remove-watched { margin-left:auto; background:none; border:none; color:var(--text-secondary); font-size:16px; cursor:pointer; padding:4px 8px; border-radius:6px; opacity:0.5; transition:opacity .2s, color .2s; flex-shrink:0; }
+.btn-remove-watched:hover { opacity:1; color:#e74c3c; }
 .watched-emoji { font-size:1.4rem; }
 .watched-info { flex:1; }
 .watched-title { font-family:'Lora',serif; font-size:0.95rem; color:var(--cream); }
@@ -878,8 +880,8 @@ async function initApp(){
       timeout.then(()=>{ throw new Error('timeout'); })
     ]);
     if(e1||e2) throw e1||e2;
-    S.movies  = (movies||[]).map(rowToMovie);
     S.watched = (watched||[]).map(rowToWatched);
+    S.movies  = (movies||[]).map(rowToMovie);
     hideLoading();
     const savedP1 = localStorage.getItem('mn_p1');
     const savedP2 = localStorage.getItem('mn_p2');
@@ -1221,20 +1223,28 @@ function spin(){
 
 async function markWatched(){
   const m=S.movies.find(x=>x.id===S.lastId); if(!m) return;
+  const movieId = m.id;
+
+  // 1. Actualizar s1 y s2 en movies (badges en Lista)
+  const { error: e1 } = await sb.from("movies").update({seen_p1:true, seen_p2:true}).eq("id", movieId);
+  if(e1){ toast("❌ Error al actualizar película"); return; }
+
+  // 2. Insertar en watched
   const payload={
     title:m.title, genres:arrToStr(m.genres), moods:arrToStr(m.moods),
-    dur:m.dur||null, watched_on:new Date().toLocaleDateString('es-ES')
+    dur:m.dur||null, watched_on:new Date().toLocaleDateString("es-ES")
   };
-  const { data, error } = await sb.from('watched').insert(payload).select().single();
-  if(error){ toast('❌ Error al guardar en vistas'); return; }
-  const { error: e2 } = await sb.from('movies').delete().eq('id', S.lastId);
-  if(e2){ toast('❌ Error al mover película'); return; }
+  const { data, error: e2 } = await sb.from("watched").insert(payload).select().single();
+  if(e2){ toast("❌ Error al guardar en vistas"); return; }
+
+  // 3. Actualizar estado local
+  const idx = S.movies.findIndex(x=>x.id === movieId);
+  if(idx>-1){ S.movies[idx].s1=true; S.movies[idx].s2=true; }
   S.watched.unshift(rowToWatched(data));
-  S.movies=S.movies.filter(x=>x.id!==S.lastId);
-  S.lastId=null;
-  document.getElementById('result-card').classList.remove('show');
-  renderList(); updateSpinCount();
-  toast('🎬 ¡Disfrutadla!');
+  S.lastId = null;
+  document.getElementById("result-card").classList.remove("show");
+  renderList(); updateSpinCount(); renderWatched();
+  toast("🎬 ¡Disfrutadla!");
 }
 
 // ── TOAST ──
@@ -1381,7 +1391,16 @@ function renderWatched(){
         <div class="watched-title">${m.title}</div>
         <div class="watched-meta">Vista el ${m.date}${gs.length?' · '+gs.join(', '):''}${ms.length?' · '+ms.join(', '):''}</div>
       </div>
+      <button class="btn-remove-watched" onclick="removeWatched(${m.id})" title="Quitar de vistas">✕</button>
     </div>`;}).join('');
+}
+
+async function removeWatched(id){
+  const { error } = await sb.from('watched').delete().eq('id', id);
+  if(error){ toast('❌ Error al eliminar'); return; }
+  S.watched = S.watched.filter(x=>x.id!==id);
+  renderWatched();
+  toast('🗑️ Película eliminada de vistas');
 }
 
 // ── DUELO ──
@@ -1536,7 +1555,7 @@ function showDueloResult(winner){
   if(isP1){
     launchBubbles(['👑','💅','😎','🎉','💃','🔥','✨','💋','🌹','💪','🥳','💯'], 40, null);
   } else {
-    const gritos = ['¡CULIAO!','¡PELOTUDO!','¡BOLUDO!','¡CARAJO!','¡VAMO VIEJO!','¡VAMOOOOO!','¡VAMOS BOCA!','¡NO MA!','¡LA CONCHA!'];
+    const gritos = ['¡CULIAO!','¡PELOTUDO!','¡BOLUDO!','¡CARAJO!','¡VAMO VIEJO NO MA!','¡VAMOS BOCA!','¡LA CONCHA DE LA LORA!'];
     launchBubbles(['🇦🇷','🥊','💪','🎊','🙌','🔥','🎉','💥','😤','🏆'], 40, gritos);
   }
   dueloSpinning = false;
