@@ -836,7 +836,8 @@ const MOODS  = ['Para reír','Para llorar','Romántica','Relajada','Feelgood','P
 async function saveGenresMoods(){
   await sb.from('settings').upsert([
     {key:'genres', value: JSON.stringify(GENRES)},
-    {key:'moods',  value: JSON.stringify(MOODS)}
+    {key:'moods',  value: JSON.stringify(MOODS)},
+    {key:'emojis', value: JSON.stringify(GE)}
   ], {onConflict:'key'});
 }
 const GE = {'Comedia':'😂','Terror':'👻','Drama':'🎭','Acción':'💥','Romance':'💕','Ciencia Ficción':'🚀','Animación':'🦄','Thriller':'🔪','Fantasía':'🧙','Old Hollywood':'🎞','Western':'🤠'};
@@ -890,6 +891,8 @@ async function initApp(){
     if(cfg){
       const gRow = cfg.find(r=>r.key==='genres');
       const mRow = cfg.find(r=>r.key==='moods');
+      const eRow = cfg.find(r=>r.key==='emojis');
+      if(eRow){ const saved=JSON.parse(eRow.value||'{}'); Object.assign(GE, saved); }
       if(gRow){ const saved=JSON.parse(gRow.value||'[]'); saved.forEach(g=>{ if(!GENRES.includes(g)) GENRES.push(g); }); }
       if(mRow){ const saved=JSON.parse(mRow.value||'[]'); saved.forEach(m=>{ if(!MOODS.includes(m)) MOODS.push(m); }); }
     }
