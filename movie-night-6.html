@@ -126,6 +126,7 @@ body::after {
   padding:10px 20px 12px;
   display:flex; gap:8px; flex-wrap:wrap;
   border-bottom:1px solid var(--border);
+  background: var(--surface);
 }
 .btn-import, .btn-export, .btn-template {
   padding:7px 14px; border-radius:8px;
@@ -599,13 +600,13 @@ body::after {
       </select>
       <button class="btn-add" onclick="openModal(null)">+ Añadir</button>
     </div>
+    <div class="import-toolbar">
+      <button class="btn-import" onclick="document.getElementById('csv-input').click()">📂 Importar CSV</button>
+      <input type="file" id="csv-input" accept=".csv" style="display:none" onchange="importCSV(event)">
+      <button class="btn-export" onclick="exportCSV()">💾 Exportar CSV</button>
+      <button class="btn-template" onclick="downloadTemplate()">📄 Plantilla</button>
+    </div>
     <div class="movie-list" id="movie-list">
-      <div class="import-toolbar">
-        <button class="btn-import" onclick="document.getElementById('csv-input').click()">📂 Importar CSV</button>
-        <input type="file" id="csv-input" accept=".csv" style="display:none" onchange="importCSV(event)">
-        <button class="btn-export" onclick="exportCSV()">💾 Exportar CSV</button>
-        <button class="btn-template" onclick="downloadTemplate()">📄 Plantilla</button>
-      </div>
       <div class="empty-state"><div class="ei">🍿</div><p>Empieza añadiendo películas<br>a vuestra lista</p></div>
     </div>
   </div>
@@ -1596,7 +1597,7 @@ function showDueloResult(winner){
   if(isP1){
     launchBubbles(['👑','💅','😎','🎉','💃','🔥','✨','💋','🌹','💪','🥳','💯'], 40, null);
   } else {
-    const gritos = ['¡CULIAO!','¡PELOTUDO!','¡BOLUDO!','¡CARAJO!','¡VAMO VIEJO!','¡VAMOOOOO!','¡VAMOS BOCA!','¡NO MA!','¡LA CONCHA!'];
+    const gritos = ['¡CULIAO!','¡PELOTUDO!','¡BOLUDO!','¡CARAJO!','¡VAMO VIEJO NO MA!','¡VAMO BOCA!','¡LA PUTA QUE TE PARIÓ!','¡LA CONCHA DE LA LORA!'];
     launchBubbles(['🇦🇷','🥊','💪','🎊','🙌','🔥','🎉','💥','😤','🏆'], 40, gritos);
   }
   dueloSpinning = false;
