@@ -567,7 +567,7 @@ body::after {
 </div>
 
 <!-- ADD TAG MODAL -->
-<div class="modal-overlay" id="tag-modal-overlay" onclick="closeTagModal()">
+<div class="modal-overlay" id="tag-modal-overlay" onclick="if(event.target===this)closeTagModal()">
   <div class="modal" onclick="event.stopPropagation()">
     <div class="modal-handle"></div>
     <div class="modal-title" id="tag-modal-title">Nuevo Género</div>
@@ -576,10 +576,10 @@ body::after {
       <input class="form-input" id="tag-input" type="text" placeholder="Ej: Documental"
         onkeydown="if(event.key==='Enter') saveTag()">
     </div>
-    <div class="form-group">
-      <label>Emoji</label>
+    <div id="tag-emoji-group" class="form-group">
+      <label>Emoji <span style="color:var(--muted);font-weight:300;text-transform:none;letter-spacing:0">(opcional)</span></label>
       <input class="form-input" id="tag-emoji" type="text" placeholder="🎬" maxlength="2"
-        style="font-size:1.5rem;text-align:center">
+        style="font-size:1.5rem;text-align:center;width:80px">
     </div>
     <div class="modal-footer">
       <button class="btn-cancel" onclick="closeTagModal()">Cancelar</button>
@@ -752,9 +752,9 @@ function hideLoading(){
 // ── SETUP ──
 const APP_PWD = 'amor';
 function startApp() {
-  const pwd = document.getElementById('pwd-input').value;
+  const pwd = document.getElementById('pwd-input').value.trim().toLowerCase();
   if(pwd !== APP_PWD){
-    document.getElementById('pwd-error').textContent = '❌ Contraseña incorrecta';
+    document.getElementById('pwd-error').textContent = '😤 Tú no eres mi baby... 💔';
     document.getElementById('pwd-input').value = '';
     document.getElementById('pwd-input').focus();
     return;
@@ -772,6 +772,7 @@ function startApp() {
   renderList();
   document.getElementById('setup').classList.remove('active');
   document.getElementById('app').classList.add('active');
+  setTimeout(()=>toast('💋 ¡Muy bien, amor! Bienvenidos 🎬'), 400);
 }
 
 // ── TABS ──
@@ -846,13 +847,11 @@ async function deleteMovie(id) {
 
 // ── MODAL ──
 function openModal(id) {
-  S.editId=id; S.form={genres:[],moods:[],dur:null,s1:false,s2:false};
+  S.editId=id||null; S.form={genres:[],moods:[],dur:null,s1:false,s2:false};
   document.getElementById('f-title').value='';
   document.getElementById('modal-title').textContent = id ? 'Editar Película' : 'Nueva Película';
-  if(id){ const m=S.movies.find(x=>x.id===id); document.getElementById('f-title').value=m.title; S.form={genres:[...(m.genres||[])],moods:[...(m.moods||[])],dur:m.dur||null,s1:m.s1,s2:m.s2}; }
+  if(id){ const m=S.movies.find(x=>x.id===id); if(m){ document.getElementById('f-title').value=m.title; S.form={genres:[...(m.genres||[])],moods:[...(m.moods||[])],dur:m.dur||null,s1:m.s1,s2:m.s2}; }}
   buildModalChips(); syncSeenToggles(); syncDurBtns();
-  document.getElementById('btn-ai').disabled = !S.editId;
-  setAiHint(S.editId ? 'Pulsa ✦ para reclasificar con IA' : 'Escribe el título y pulsa ✦ para que la IA lo clasifique', '');
   document.getElementById('modal-overlay').classList.add('open');
   setTimeout(()=>document.getElementById('f-title').focus(),300);
 }
@@ -1156,10 +1155,10 @@ let tagEditType = null;
 
 function renderSettings(){
   document.getElementById('settings-genres').innerHTML = GENRES.map(g=>
-    `<span class="settings-tag">${GE[g]||''} ${g}<button class="del-tag" onclick="deleteTag('genre','${g}')">✕</button></span>`
+    `<span class="settings-tag">${GE[g]||''} ${g} <button class="del-tag" onclick="deleteTag('genre','${g.replace(/'/g,"\\'")}')">✕</button></span>`
   ).join('');
   document.getElementById('settings-moods').innerHTML = MOODS.map(m=>
-    `<span class="settings-tag">${m}<button class="del-tag" onclick="deleteTag('mood','${m}')">✕</button></span>`
+    `<span class="settings-tag">${m} <button class="del-tag" onclick="deleteTag('mood','${m.replace(/'/g,"\\'")}')">✕</button></span>`
   ).join('');
 }
 
@@ -1168,18 +1167,18 @@ function openAddTag(type){
   document.getElementById('tag-modal-title').textContent = type==='genre' ? 'Nuevo Género' : 'Nuevo Mood';
   document.getElementById('tag-input').value = '';
   document.getElementById('tag-emoji').value = '';
-  document.getElementById('tag-emoji').style.display = type==='genre' ? 'block' : 'none';
-  document.getElementById('tag-modal-overlay').style.display = 'flex';
-  setTimeout(()=>document.getElementById('tag-input').focus(), 200);
+  document.getElementById('tag-emoji-group').style.display = type==='genre' ? 'block' : 'none';
+  document.getElementById('tag-modal-overlay').classList.add('open');
+  setTimeout(()=>document.getElementById('tag-input').focus(), 300);
 }
 
 function closeTagModal(){
-  document.getElementById('tag-modal-overlay').style.display = 'none';
+  document.getElementById('tag-modal-overlay').classList.remove('open');
 }
 
 function saveTag(){
   const name = document.getElementById('tag-input').value.trim();
-  if(!name) return;
+  if(!name){ document.getElementById('tag-input').focus(); return; }
   if(tagEditType==='genre'){
     if(GENRES.includes(name)){ toast('⚠️ Ese género ya existe'); return; }
     const emoji = document.getElementById('tag-emoji').value.trim() || '🎬';
@@ -1190,7 +1189,7 @@ function saveTag(){
     MOODS.push(name);
   }
   closeTagModal();
-  buildDropdowns(); buildSpinChips(); renderSettings();
+  buildDropdowns(); buildSpinChips(); buildModalChips(); renderSettings();
   toast(`✅ Añadido: ${name}`);
 }
 
@@ -1202,7 +1201,7 @@ function deleteTag(type, name){
     const idx = MOODS.indexOf(name);
     if(idx>-1) MOODS.splice(idx,1);
   }
-  buildDropdowns(); buildSpinChips(); renderSettings();
+  buildDropdowns(); buildSpinChips(); buildModalChips(); renderSettings();
   toast(`🗑 Eliminado: ${name}`);
 }
 
